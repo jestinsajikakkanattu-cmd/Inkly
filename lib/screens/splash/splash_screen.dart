@@ -2,8 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-import '../login/login_screen.dart';
 import '../onboarding/onboarding_screen.dart';
 import '../../shared/constants/app_fonts.dart';
 

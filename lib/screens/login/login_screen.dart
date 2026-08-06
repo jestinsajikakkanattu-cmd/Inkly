@@ -19,7 +19,9 @@ class LoginScreen extends StatelessWidget {
                 children: [
                   const Spacer(flex: 2),
 
-                  Image.asset("assets/images/inkly_logo.png", width: 210),
+                  Center(
+                    child: Image.asset("assets/images/inkly_logo.png", width: 230),
+                  ),
 
                   const SizedBox(height: 5),
 

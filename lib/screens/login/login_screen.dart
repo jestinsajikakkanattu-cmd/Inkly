@@ -1,8 +1,46 @@
 import 'package:flutter/material.dart';
+import 'sign_in_screen.dart';
 import '../../shared/constants/app_fonts.dart';
+import '../../routes/app_routes.dart';
+import '../../services/auth_service.dart';
 
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  bool _isLoading = false;
+
+  Future<void> _googleSignIn() async {
+    try {
+      setState(() => _isLoading = true);
+
+      final result = await AuthService.instance.signInWithGoogle();
+
+      if (!mounted) return;
+
+      if (result != null) {
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          AppRoutes.home,
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -20,7 +58,10 @@ class LoginScreen extends StatelessWidget {
                   const Spacer(flex: 2),
 
                   Center(
-                    child: Image.asset("assets/images/inkly_logo.png", width: 230),
+                    child: Image.asset(
+                      "assets/images/inkly_logo.png",
+                      width: 230,
+                    ),
                   ),
 
                   const SizedBox(height: 5),
@@ -51,9 +92,10 @@ class LoginScreen extends StatelessWidget {
                   const SizedBox(height: 25),
 
                   _loginButton(
+                    context: context,
                     image: "assets/login_images/google.png",
                     title: "Continue with Google",
-                    onTap: () {},
+                    onTap: _googleSignIn,
                   ),
 
                   const SizedBox(height: 15),
@@ -72,9 +114,15 @@ class LoginScreen extends StatelessWidget {
                   const SizedBox(height: 15),
 
                   _loginButton(
+                    context: context,
                     image: "assets/login_images/email.png",
                     title: "Continue with Email",
-                    onTap: () {},
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const SignInScreen()),
+                      );
+                    },
                   ),
 
                   const SizedBox(height: 5),
@@ -164,6 +212,7 @@ class LoginScreen extends StatelessWidget {
   }
 
   Widget _loginButton({
+    required BuildContext context,
     required String image,
     required String title,
     required VoidCallback onTap,
@@ -188,12 +237,23 @@ class LoginScreen extends StatelessWidget {
 
             // const SizedBox(width: 10),
             Expanded(
-              child: Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
+              child: Center(
+                child: _isLoading && title == "Continue with Google"
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Color(0xFF6B4528),
+                        ),
+                      )
+                    : Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
               ),
             ),
           ],

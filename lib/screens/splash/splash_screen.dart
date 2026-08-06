@@ -70,10 +70,11 @@ class _SplashScreenState extends State<SplashScreen>
       ),
     );
   }
-// 300ms → Fast
-// 600ms → Normal
-// 800ms → Slow
-// 1200ms → Very slow
+
+  // 300ms → Fast
+  // 600ms → Normal
+  // 800ms → Slow
+  // 1200ms → Very slow
   @override
   void dispose() {
     _controller.dispose();
@@ -114,7 +115,7 @@ class _SplashScreenState extends State<SplashScreen>
                           "A diary that listens.",
                           style: TextStyle(
                             fontSize: 20,
-                            fontFamily: AppFonts.handwriting,
+                            fontFamily: AppFonts.handwriting1,
                             fontWeight: FontWeight.w500,
                             color: Color(0xFF3B2D24),
                           ),

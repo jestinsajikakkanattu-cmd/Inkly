@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../shared/constants/app_fonts.dart';
 import 'sign_up_screen.dart';
+import '../../services/auth_service.dart';
+import '../../routes/app_routes.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -18,111 +20,112 @@ class _SignInScreenState extends State<SignInScreen> {
 
   bool _obscurePassword = true;
 
-Future<void> _showForgotPasswordDialog() async {
-  final formKey = GlobalKey<FormState>();
-  final emailController = TextEditingController();
+  Future<void> _showForgotPasswordDialog() async {
+    final formKey = GlobalKey<FormState>();
+    final emailController = TextEditingController();
 
-  bool isValid = false;
+    bool isValid = false;
 
-  await showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (context) {
-      return StatefulBuilder(
-        builder: (context, setDialogState) {
-          return AlertDialog(
-            backgroundColor: const Color(0xFFFFFCF7),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(24),
-            ),
-            title: const Text(
-              "Forgot Password?",
-              textAlign: TextAlign.center,
-            ),
-            content: Form(
-              key: formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    "Enter your email address.\nWe'll send a reset link.",
-                    textAlign: TextAlign.center,
-                  ),
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFFFFFCF7),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+              title: const Text(
+                "Forgot Password?",
+                textAlign: TextAlign.center,
+              ),
+              content: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      "Enter your email address.\nWe'll send a reset link.",
+                      textAlign: TextAlign.center,
+                    ),
 
-                  const SizedBox(height: 20),
+                    const SizedBox(height: 20),
 
-                  TextFormField(
-                    controller: emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    autovalidateMode: AutovalidateMode.onUserInteraction,
-                    onChanged: (value) {
-                      setDialogState(() {
-                        isValid = RegExp(
+                    TextFormField(
+                      controller: emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      autovalidateMode: AutovalidateMode.onUserInteraction,
+                      onChanged: (value) {
+                        setDialogState(() {
+                          isValid = RegExp(
+                            r'^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$',
+                          ).hasMatch(value.trim());
+                        });
+                      },
+                      decoration: InputDecoration(
+                        hintText: "Email Address",
+                        prefixIcon: const Icon(Icons.email_outlined),
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return "Email is required";
+                        }
+
+                        if (!RegExp(
                           r'^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$',
-                        ).hasMatch(value.trim());
-                      });
-                    },
-                    decoration: InputDecoration(
-                      hintText: "Email Address",
-                      prefixIcon: const Icon(Icons.email_outlined),
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide.none,
+                        ).hasMatch(value.trim())) {
+                          return "Enter a valid email";
+                        }
+
+                        return null;
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text("Cancel"),
                       ),
                     ),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return "Email is required";
-                      }
 
-                      if (!RegExp(
-                        r'^[\w-.]+@([\w-]+\.)+[\w-]{2,4}$',
-                      ).hasMatch(value.trim())) {
-                        return "Enter a valid email";
-                      }
+                    const SizedBox(width: 12),
 
-                      return null;
-                    },
-                  ),
-                ],
-              ),
-            ),
-            actions: [
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text("Cancel"),
-                    ),
-                  ),
-
-                  const SizedBox(width: 12),
-
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: isValid
-                          ? () {
-                              if (formKey.currentState!.validate()) {
-                                Navigator.pop(context);
-                                _showResetSuccessDialog();
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: isValid
+                            ? () {
+                                if (formKey.currentState!.validate()) {
+                                  Navigator.pop(context);
+                                  _showResetSuccessDialog();
+                                }
                               }
-                            }
-                          : null,
-                      child: const Text("Send"),
+                            : null,
+                        child: const Text("Send"),
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ],
-          );
-        },
-      );
-    },
-  );
-}
+                  ],
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   void _showResetSuccessDialog() {
     showDialog(
       context: context,
@@ -306,11 +309,41 @@ Future<void> _showForgotPasswordDialog() async {
                       width: double.infinity,
                       height: 58,
                       child: ElevatedButton(
-                        onPressed: () {
+                        onPressed: () async {
                           FocusScope.of(context).unfocus();
 
-                          if (_formKey.currentState!.validate()) {
-                            // TODO: Firebase Sign In
+                          if (!_formKey.currentState!.validate()) {
+                            return;
+                          }
+
+                          try {
+                            await AuthService.instance.signInWithEmail(
+                              email: _emailController.text.trim(),
+                              password: _passwordController.text,
+                            );
+
+                            if (!mounted) return;
+
+                            Navigator.pushNamedAndRemoveUntil(
+                              context,
+                              AppRoutes.home,
+                              (route) => false,
+                              arguments: {
+                                "loginStatus": AuthService.instance.loginStatus,
+                              },
+                            );
+                          } catch (e) {
+                            if (!mounted) return;
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  e.toString().replaceFirst("Exception: ", ""),
+                                ),
+                                behavior: SnackBarBehavior.floating,
+                                duration: const Duration(seconds: 3),
+                              ),
+                            );
                           }
                         },
                         style: ElevatedButton.styleFrom(

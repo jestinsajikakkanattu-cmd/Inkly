@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "24328706385-v9i6d171iag8ot8ggjc5i89h7v56ii2d.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.inkly",
+            "certificate_hash": "465c140a289d78bd3ea5a6a911fdc49d475b7bda"
+          }
+        },
+        {
           "client_id": "24328706385-muh2uuu615pgh7hnqlbro9c1qivnm61t.apps.googleusercontent.com",
           "client_type": 3
         }

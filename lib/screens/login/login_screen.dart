@@ -27,6 +27,7 @@ class _LoginScreenState extends State<LoginScreen> {
           context,
           AppRoutes.home,
           (route) => false,
+          arguments: {"loginStatus": AuthService.instance.loginStatus},
         );
       }
     } catch (e) {

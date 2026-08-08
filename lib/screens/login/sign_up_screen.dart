@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../shared/constants/app_fonts.dart';
+import '../../services/auth_service.dart';
+import '../../routes/app_routes.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -19,7 +21,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
-
+  bool _isLoading = false;
   @override
   void dispose() {
     _nameController.dispose();
@@ -217,9 +219,49 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       width: double.infinity,
                       height: 58,
                       child: ElevatedButton(
-                        onPressed: () {
-                          if (_formKey.currentState!.validate()) {
-                            // TODO: Firebase Sign Up
+                        onPressed: () async {
+                          FocusScope.of(context).unfocus();
+
+                          if (!_formKey.currentState!.validate()) {
+                            return;
+                          }
+
+                          try {
+                            setState(() {
+                              _isLoading = true;
+                            });
+
+                            await AuthService.instance.signUpWithEmail(
+                              name: _nameController.text.trim(),
+                              email: _emailController.text.trim(),
+                              password: _passwordController.text,
+                            );
+
+                            if (!mounted) return;
+
+                            Navigator.pushNamedAndRemoveUntil(
+                              context,
+                              AppRoutes.home,
+                              (route) => false,
+                            );
+                          } catch (e) {
+                            if (!mounted) return;
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  e.toString().replaceFirst("Exception: ", ""),
+                                ),
+                                behavior: SnackBarBehavior.floating,
+                                duration: const Duration(seconds: 3),
+                              ),
+                            );
+                          } finally {
+                            if (mounted) {
+                              setState(() {
+                                _isLoading = false;
+                              });
+                            }
                           }
                         },
                         style: ElevatedButton.styleFrom(

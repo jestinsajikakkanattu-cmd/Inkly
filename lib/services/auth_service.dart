@@ -1,6 +1,6 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AuthService {
   AuthService._();
@@ -16,11 +16,19 @@ class AuthService {
   User? get currentUser => _auth.currentUser;
 
   bool get isLoggedIn => currentUser != null;
+
+  // ---------------------------------------------------------
+  // GOOGLE SIGN IN
+  // ---------------------------------------------------------
+
   Future<UserCredential?> signInWithGoogle() async {
     try {
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      final GoogleSignInAccount? googleUser =
+          await _googleSignIn.signIn();
 
-      if (googleUser == null) return null;
+      if (googleUser == null) {
+        return null;
+      }
 
       final GoogleSignInAuthentication googleAuth =
           await googleUser.authentication;
@@ -30,94 +38,84 @@ class AuthService {
         idToken: googleAuth.idToken,
       );
 
-      final userCredential = await _auth.signInWithCredential(credential);
+      final userCredential =
+          await _auth.signInWithCredential(credential);
 
       final user = userCredential.user;
 
-      if (user == null) return userCredential;
+      if (user == null) {
+        return userCredential;
+      }
 
-      final userDoc = _firestore.collection("users").doc(user.uid);
+      final isNewUser =
+          userCredential.additionalUserInfo?.isNewUser ?? false;
 
-      final snapshot = await userDoc.get();
-
-      if (!snapshot.exists) {
-        await userDoc.set({
-          "uid": user.uid,
-          "name": user.displayName ?? "",
-          "email": user.email ?? "",
-          "photoUrl": user.photoURL ?? "",
-          "provider": "google",
-          "createdAt": FieldValue.serverTimestamp(),
-          "lastLogin": FieldValue.serverTimestamp(),
-          "isPremium": false,
-        });
-
+      if (isNewUser) {
         loginStatus = "New User";
+
         print("🆕 New Google User");
       } else {
-        await userDoc.update({"lastLogin": FieldValue.serverTimestamp()});
-
         loginStatus = "Existing User";
+
         print("👋 Existing Google User");
       }
 
+      await _saveUser(user);
+
       return userCredential;
     } on FirebaseAuthException catch (e) {
-      throw Exception(e.message);
+      await _googleSignIn.signOut();
+
+      throw Exception(_getAuthErrorMessage(e));
     } catch (e) {
-      throw Exception(e.toString());
+      await _googleSignIn.signOut();
+
+      throw Exception(
+        e.toString().replaceFirst("Exception: ", ""),
+      );
     }
   }
+
+  // ---------------------------------------------------------
+  // EMAIL SIGN IN
+  // ---------------------------------------------------------
 
   Future<UserCredential> signInWithEmail({
     required String email,
     required String password,
   }) async {
     try {
-      final credential = await _auth.signInWithEmailAndPassword(
+      final userCredential =
+          await _auth.signInWithEmailAndPassword(
         email: email.trim(),
         password: password,
       );
 
-      final user = credential.user;
+      final user = userCredential.user;
 
       if (user == null) {
-        throw Exception("Unable to sign in");
+        throw Exception("Unable to sign in.");
       }
 
-      final userDoc = _firestore.collection("users").doc(user.uid);
+      loginStatus = "Existing User";
 
-      final snapshot = await userDoc.get();
+      print("👋 Existing Email User");
 
-      if (!snapshot.exists) {
-        await userDoc.set({
-          "uid": user.uid,
-          "name": user.displayName ?? "",
-          "email": user.email ?? "",
-          "photoUrl": "",
-          "provider": "email",
-          "createdAt": FieldValue.serverTimestamp(),
-          "lastLogin": FieldValue.serverTimestamp(),
-          "isPremium": false,
-        });
+      await _saveUser(user);
 
-        loginStatus = "New User";
-        print("🆕 New Email User");
-      } else {
-        await userDoc.update({"lastLogin": FieldValue.serverTimestamp()});
-
-        loginStatus = "Existing User";
-        print("👋 Existing Email User");
-      }
-
-      return credential;
+      return userCredential;
     } on FirebaseAuthException catch (e) {
-      print("Firebase Sign In Error: ${e.code}");
-      throw Exception(getAuthErrorMessage(e));
+      throw Exception(_getAuthErrorMessage(e));
     } catch (e) {
-      throw Exception(e.toString());
+      throw Exception(
+        e.toString().replaceFirst("Exception: ", ""),
+      );
     }
   }
+
+  // ---------------------------------------------------------
+  // EMAIL SIGN UP
+  // ---------------------------------------------------------
 
   Future<UserCredential> signUpWithEmail({
     required String name,
@@ -125,69 +123,135 @@ class AuthService {
     required String password,
   }) async {
     try {
-      final credential = await _auth.createUserWithEmailAndPassword(
+      final userCredential =
+          await _auth.createUserWithEmailAndPassword(
         email: email.trim(),
         password: password,
       );
 
-      final user = credential.user;
+      final user = userCredential.user;
 
       if (user == null) {
-        throw Exception("Unable to create user");
+        throw Exception(
+          "Unable to create account.",
+        );
       }
 
       await user.updateDisplayName(name);
 
-      await _firestore.collection("users").doc(user.uid).set({
-        "uid": user.uid,
-        "name": name,
-        "email": user.email ?? "",
-        "photoUrl": "",
-        "provider": "email",
-        "createdAt": FieldValue.serverTimestamp(),
-        "lastLogin": FieldValue.serverTimestamp(),
-        "isPremium": false,
-      });
+      loginStatus = "New User";
 
       print("🆕 New Email User");
 
-      return credential;
+      await _saveUser(user);
+
+      return userCredential;
     } on FirebaseAuthException catch (e) {
-      print("Firebase Sign Up Error: ${e.code}");
-      throw Exception(getAuthErrorMessage(e));
+      throw Exception(_getAuthErrorMessage(e));
     } catch (e) {
-      throw Exception(e.toString());
+      throw Exception(
+        e.toString().replaceFirst("Exception: ", ""),
+      );
     }
   }
 
-  Future<void> sendPasswordReset({required String email}) async {
+  // ---------------------------------------------------------
+  // SAVE USER TO FIRESTORE
+  // ---------------------------------------------------------
+
+  Future<void> _saveUser(User user) async {
+    final providers = user.providerData
+        .map((provider) => provider.providerId)
+        .toSet()
+        .toList();
+
+    await _firestore
+        .collection("users")
+        .doc(user.uid)
+        .set(
+      {
+        "uid": user.uid,
+        "name": user.displayName ?? "",
+        "email": user.email ?? "",
+        "photoUrl": user.photoURL ?? "",
+        "providers": providers,
+        "lastLogin": FieldValue.serverTimestamp(),
+      },
+      SetOptions(merge: true),
+    );
+  }
+
+  // ---------------------------------------------------------
+  // GET SIGN IN METHODS
+  // ---------------------------------------------------------
+
+  List<String> get signInMethods {
+    final user = currentUser;
+
+    if (user == null) {
+      return [];
+    }
+
+    return user.providerData
+        .map((provider) => provider.providerId)
+        .toList();
+  }
+
+  // ---------------------------------------------------------
+  // PASSWORD RESET
+  // ---------------------------------------------------------
+
+  Future<void> sendPasswordReset({
+    required String email,
+  }) async {
     try {
-      await _auth.sendPasswordResetEmail(email: email.trim());
+      await _auth.sendPasswordResetEmail(
+        email: email.trim(),
+      );
     } on FirebaseAuthException catch (e) {
-      throw Exception(e.message);
+      throw Exception(
+        _getAuthErrorMessage(e),
+      );
     }
   }
+
+  // ---------------------------------------------------------
+  // SIGN OUT
+  // ---------------------------------------------------------
 
   Future<void> signOut() async {
     try {
       await _googleSignIn.signOut();
+
       await _auth.signOut();
+
+      loginStatus = null;
     } catch (e) {
       throw Exception(e.toString());
     }
   }
+
+  // ---------------------------------------------------------
+  // AUTH STATE
+  // ---------------------------------------------------------
 
   Stream<User?> authStateChanges() {
     return _auth.authStateChanges();
   }
 
-  String getAuthErrorMessage(FirebaseAuthException e) {
+  // ---------------------------------------------------------
+  // AUTH ERROR MESSAGES
+  // ---------------------------------------------------------
+
+  String _getAuthErrorMessage(
+    FirebaseAuthException e,
+  ) {
     switch (e.code) {
       case "user-not-found":
         return "No account found with this email.";
 
       case "wrong-password":
-        return "Incorrect password. Please try again.";
+        return "Email or password is incorrect.";
 
       case "invalid-credential":
         return "Email or password is incorrect.";
@@ -196,6 +260,9 @@ class AuthService {
         return "Please enter a valid email address.";
 
       case "email-already-in-use":
+        return "An account already exists with this email.";
+
+      case "account-exists-with-different-credential":
         return "An account already exists with this email.";
 
       case "weak-password":

@@ -15,33 +15,50 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
 
   Future<void> _googleSignIn() async {
-    try {
-      setState(() => _isLoading = true);
+  try {
+    setState(() {
+      _isLoading = true;
+    });
 
-      final result = await AuthService.instance.signInWithGoogle();
+    final result =
+        await AuthService.instance.signInWithGoogle();
 
-      if (!mounted) return;
+    if (!mounted) return;
 
-      if (result != null) {
-        Navigator.pushNamedAndRemoveUntil(
-          context,
-          AppRoutes.home,
-          (route) => false,
-          arguments: {"loginStatus": AuthService.instance.loginStatus},
-        );
-      }
-    } catch (e) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(
+    if (result != null) {
+      Navigator.pushNamedAndRemoveUntil(
         context,
-      ).showSnackBar(SnackBar(content: Text(e.toString())));
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+        AppRoutes.home,
+        (route) => false,
+        arguments: {
+          "loginStatus":
+              AuthService.instance.loginStatus,
+        },
+      );
+    }
+  } catch (e) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          e.toString().replaceFirst(
+                "Exception: ",
+                "",
+              ),
+        ),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 4),
+      ),
+    );
+  } finally {
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
+}
 
   @override
   Widget build(BuildContext context) {

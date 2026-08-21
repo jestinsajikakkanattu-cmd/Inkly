@@ -50,7 +50,10 @@ class HomeScreen extends StatelessWidget {
 
             const SizedBox(height: 20),
 
-            Text("Provider: Google", style: const TextStyle(fontSize: 16)),
+            Text(
+              "Provider: ${user?.providerData.first?.providerId ?? "Unknown"}",
+              style: const TextStyle(fontSize: 16),
+            ),
 
             const SizedBox(height: 20),
 

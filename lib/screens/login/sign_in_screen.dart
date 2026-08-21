@@ -19,19 +19,25 @@ class _SignInScreenState extends State<SignInScreen> {
   final _passwordController = TextEditingController();
 
   bool _obscurePassword = true;
+  bool _isLoading = false;
+
+  // ---------------------------------------------------------
+  // FORGOT PASSWORD
+  // ---------------------------------------------------------
 
   Future<void> _showForgotPasswordDialog() async {
     final formKey = GlobalKey<FormState>();
     final emailController = TextEditingController();
 
     bool isValid = false;
+    bool isSending = false;
 
     await showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) {
+      builder: (dialogContext) {
         return StatefulBuilder(
-          builder: (context, setDialogState) {
+          builder: (dialogContext, setDialogState) {
             return AlertDialog(
               backgroundColor: const Color(0xFFFFFCF7),
               shape: RoundedRectangleBorder(
@@ -47,7 +53,8 @@ class _SignInScreenState extends State<SignInScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const Text(
-                      "Enter your email address.\nWe'll send a reset link.",
+                      "Enter your email address.\n"
+                      "We'll send a reset link.",
                       textAlign: TextAlign.center,
                     ),
 
@@ -96,7 +103,11 @@ class _SignInScreenState extends State<SignInScreen> {
                   children: [
                     Expanded(
                       child: OutlinedButton(
-                        onPressed: () => Navigator.pop(context),
+                        onPressed: isSending
+                            ? null
+                            : () {
+                                Navigator.pop(dialogContext);
+                              },
                         child: const Text("Cancel"),
                       ),
                     ),
@@ -105,15 +116,61 @@ class _SignInScreenState extends State<SignInScreen> {
 
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: isValid
-                            ? () {
-                                if (formKey.currentState!.validate()) {
-                                  Navigator.pop(context);
-                                  _showResetSuccessDialog();
+                        onPressed: !isValid || isSending
+                            ? null
+                            : () async {
+                                if (!formKey.currentState!.validate()) {
+                                  return;
                                 }
-                              }
-                            : null,
-                        child: const Text("Send"),
+
+                                setDialogState(() {
+                                  isSending = true;
+                                });
+
+                                try {
+                                  await AuthService.instance.sendPasswordReset(
+                                    email: emailController.text.trim(),
+                                  );
+
+                                  if (!dialogContext.mounted) {
+                                    return;
+                                  }
+
+                                  Navigator.pop(dialogContext);
+
+                                  if (!mounted) return;
+
+                                  _showResetSuccessDialog();
+                                } catch (e) {
+                                  setDialogState(() {
+                                    isSending = false;
+                                  });
+
+                                  ScaffoldMessenger.of(
+                                    dialogContext,
+                                  ).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        e.toString().replaceFirst(
+                                          "Exception: ",
+                                          "",
+                                        ),
+                                      ),
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                }
+                              },
+                        child: isSending
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Text("Send"),
                       ),
                     ),
                   ],
@@ -124,12 +181,14 @@ class _SignInScreenState extends State<SignInScreen> {
         );
       },
     );
+
+    emailController.dispose();
   }
 
   void _showResetSuccessDialog() {
     showDialog(
       context: context,
-      builder: (_) {
+      builder: (dialogContext) {
         return AlertDialog(
           backgroundColor: const Color(0xFFFFFCF7),
           shape: RoundedRectangleBorder(
@@ -147,7 +206,8 @@ class _SignInScreenState extends State<SignInScreen> {
               SizedBox(height: 10),
 
               Text(
-                "If your email exists,\nyou'll receive a password reset link shortly.",
+                "If your email exists,\n"
+                "you'll receive a password reset link shortly.",
                 textAlign: TextAlign.center,
               ),
             ],
@@ -156,7 +216,7 @@ class _SignInScreenState extends State<SignInScreen> {
             Center(
               child: ElevatedButton(
                 onPressed: () {
-                  Navigator.pop(context);
+                  Navigator.pop(dialogContext);
                 },
                 child: const Text("OK"),
               ),
@@ -167,12 +227,121 @@ class _SignInScreenState extends State<SignInScreen> {
     );
   }
 
+  // ---------------------------------------------------------
+  // EMAIL SIGN IN
+  // ---------------------------------------------------------
+
+  Future<void> _signIn() async {
+  FocusScope.of(context).unfocus();
+
+  if (!_formKey.currentState!.validate()) {
+    return;
+  }
+
+  setState(() {
+    _isLoading = true;
+  });
+
+  try {
+    await AuthService.instance.signInWithEmail(
+      email: _emailController.text.trim(),
+      password: _passwordController.text,
+    );
+
+    if (!mounted) return;
+
+    Navigator.pushNamedAndRemoveUntil(
+      context,
+      AppRoutes.home,
+      (route) => false,
+      arguments: {
+        "loginStatus":
+            AuthService.instance.loginStatus,
+      },
+    );
+  } catch (e) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          e.toString().replaceFirst(
+                "Exception: ",
+                "",
+              ),
+        ),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 4),
+      ),
+    );
+  } finally {
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+}
+
+  // ---------------------------------------------------------
+  // LINK GOOGLE DIALOG
+  // ---------------------------------------------------------
+
+  Future<bool?> _showLinkGoogleDialog() {
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFFFFFCF7),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          title: const Text(
+            "Link Google Account?",
+            textAlign: TextAlign.center,
+          ),
+          content: const Text(
+            "You already have an Inkly account "
+            "with this email.\n\n"
+            "Would you like to link Google so you "
+            "can use either Google or your email "
+            "and password to sign in?",
+            textAlign: TextAlign.center,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, false);
+              },
+              child: const Text("Not Now"),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, true);
+              },
+              child: const Text("Link Google"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // ---------------------------------------------------------
+  // DISPOSE
+  // ---------------------------------------------------------
+
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
+
+  // ---------------------------------------------------------
+  // BUILD
+  // ---------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -194,14 +363,15 @@ class _SignInScreenState extends State<SignInScreen> {
                     Align(
                       alignment: Alignment.centerLeft,
                       child: IconButton(
-                        onPressed: () => Navigator.pop(context),
+                        onPressed: _isLoading
+                            ? null
+                            : () => Navigator.pop(context),
                         icon: const Icon(Icons.arrow_back_ios_new),
                       ),
                     ),
 
                     Image.asset("assets/images/inkly_logo.png", width: 200),
 
-                    // const SizedBox(height: 20),
                     const Text(
                       "Sign In",
                       style: TextStyle(
@@ -211,21 +381,13 @@ class _SignInScreenState extends State<SignInScreen> {
                       ),
                     ),
 
-                    // const SizedBox(height: 12),
-
-                    // const Text(
-                    //   "Welcome back.\nContinue your journey.",
-                    //   textAlign: TextAlign.center,
-                    //   style: TextStyle(
-                    //     fontSize: 20,
-                    //     fontFamily: AppFonts.handwriting1,
-                    //     color: Color(0xFF75624E),
-                    //   ),
-                    // ),
                     const SizedBox(height: 35),
+
+                    // EMAIL
                     TextFormField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
+                      autovalidateMode: AutovalidateMode.onUserInteraction,
                       decoration: InputDecoration(
                         hintText: "Email",
                         filled: true,
@@ -253,9 +415,11 @@ class _SignInScreenState extends State<SignInScreen> {
 
                     const SizedBox(height: 20),
 
+                    // PASSWORD
                     TextFormField(
                       controller: _passwordController,
                       obscureText: _obscurePassword,
+                      autovalidateMode: AutovalidateMode.onUserInteraction,
                       decoration: InputDecoration(
                         hintText: "Password",
                         filled: true,
@@ -293,10 +457,13 @@ class _SignInScreenState extends State<SignInScreen> {
 
                     const SizedBox(height: 15),
 
+                    // FORGOT PASSWORD
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
-                        onPressed: _showForgotPasswordDialog,
+                        onPressed: _isLoading
+                            ? null
+                            : _showForgotPasswordDialog,
                         child: const Text(
                           "Forgot Password?",
                           style: TextStyle(color: Color(0xFF6B4528)),
@@ -304,48 +471,12 @@ class _SignInScreenState extends State<SignInScreen> {
                       ),
                     ),
 
-                    // const Spacer(),
+                    // SIGN IN BUTTON
                     SizedBox(
                       width: double.infinity,
                       height: 58,
                       child: ElevatedButton(
-                        onPressed: () async {
-                          FocusScope.of(context).unfocus();
-
-                          if (!_formKey.currentState!.validate()) {
-                            return;
-                          }
-
-                          try {
-                            await AuthService.instance.signInWithEmail(
-                              email: _emailController.text.trim(),
-                              password: _passwordController.text,
-                            );
-
-                            if (!mounted) return;
-
-                            Navigator.pushNamedAndRemoveUntil(
-                              context,
-                              AppRoutes.home,
-                              (route) => false,
-                              arguments: {
-                                "loginStatus": AuthService.instance.loginStatus,
-                              },
-                            );
-                          } catch (e) {
-                            if (!mounted) return;
-
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  e.toString().replaceFirst("Exception: ", ""),
-                                ),
-                                behavior: SnackBarBehavior.floating,
-                                duration: const Duration(seconds: 3),
-                              ),
-                            );
-                          }
-                        },
+                        onPressed: _isLoading ? null : _signIn,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF6B4528),
                           foregroundColor: Colors.white,
@@ -354,18 +485,28 @@ class _SignInScreenState extends State<SignInScreen> {
                             borderRadius: BorderRadius.circular(18),
                           ),
                         ),
-                        child: const Text(
-                          "Sign In",
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Text(
+                                "Sign In",
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                       ),
                     ),
 
                     const SizedBox(height: 20),
 
+                    // CREATE ACCOUNT
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -378,14 +519,16 @@ class _SignInScreenState extends State<SignInScreen> {
                         ),
 
                         TextButton(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const SignUpScreen(),
-                              ),
-                            );
-                          },
+                          onPressed: _isLoading
+                              ? null
+                              : () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => const SignUpScreen(),
+                                    ),
+                                  );
+                                },
                           child: const Text(
                             "Create Account",
                             style: TextStyle(
@@ -396,6 +539,7 @@ class _SignInScreenState extends State<SignInScreen> {
                         ),
                       ],
                     ),
+
                     const SizedBox(height: 40),
                   ],
                 ),

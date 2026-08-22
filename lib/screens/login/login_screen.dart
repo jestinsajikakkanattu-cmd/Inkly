@@ -3,6 +3,7 @@ import 'sign_in_screen.dart';
 import '../../shared/constants/app_fonts.dart';
 import '../../routes/app_routes.dart';
 import '../../services/auth_service.dart';
+import '../main/main_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -15,50 +16,41 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
 
   Future<void> _googleSignIn() async {
-  try {
-    setState(() {
-      _isLoading = true;
-    });
-
-    final result =
-        await AuthService.instance.signInWithGoogle();
-
-    if (!mounted) return;
-
-    if (result != null) {
-      Navigator.pushNamedAndRemoveUntil(
-        context,
-        AppRoutes.home,
-        (route) => false,
-        arguments: {
-          "loginStatus":
-              AuthService.instance.loginStatus,
-        },
-      );
-    }
-  } catch (e) {
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          e.toString().replaceFirst(
-                "Exception: ",
-                "",
-              ),
-        ),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 4),
-      ),
-    );
-  } finally {
-    if (mounted) {
+    try {
       setState(() {
-        _isLoading = false;
+        _isLoading = true;
       });
+
+      final result = await AuthService.instance.signInWithGoogle();
+
+      if (!mounted) return;
+
+      if (result != null) {
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          AppRoutes.home,
+          (route) => false,
+          arguments: {"loginStatus": AuthService.instance.loginStatus},
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst("Exception: ", "")),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
-}
 
   @override
   Widget build(BuildContext context) {

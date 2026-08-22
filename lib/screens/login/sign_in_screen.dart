@@ -4,6 +4,7 @@ import '../../shared/constants/app_fonts.dart';
 import 'sign_up_screen.dart';
 import '../../services/auth_service.dart';
 import '../../routes/app_routes.dart';
+import '../main/main_screen.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -232,56 +233,48 @@ class _SignInScreenState extends State<SignInScreen> {
   // ---------------------------------------------------------
 
   Future<void> _signIn() async {
-  FocusScope.of(context).unfocus();
+    FocusScope.of(context).unfocus();
 
-  if (!_formKey.currentState!.validate()) {
-    return;
-  }
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
 
-  setState(() {
-    _isLoading = true;
-  });
+    setState(() {
+      _isLoading = true;
+    });
 
-  try {
-    await AuthService.instance.signInWithEmail(
-      email: _emailController.text.trim(),
-      password: _passwordController.text,
-    );
+    try {
+      await AuthService.instance.signInWithEmail(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    Navigator.pushNamedAndRemoveUntil(
-      context,
-      AppRoutes.home,
-      (route) => false,
-      arguments: {
-        "loginStatus":
-            AuthService.instance.loginStatus,
-      },
-    );
-  } catch (e) {
-    if (!mounted) return;
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        AppRoutes.home,
+        (route) => false,
+        arguments: {"loginStatus": AuthService.instance.loginStatus},
+      );
+    } catch (e) {
+      if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          e.toString().replaceFirst(
-                "Exception: ",
-                "",
-              ),
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst("Exception: ", "")),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 4),
         ),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 4),
-      ),
-    );
-  } finally {
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-      });
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
-}
 
   // ---------------------------------------------------------
   // LINK GOOGLE DIALOG

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../shared/constants/app_fonts.dart';
 import '../../services/auth_service.dart';
 import '../../routes/app_routes.dart';
+import '../main/main_screen.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});

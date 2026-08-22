@@ -6,6 +6,7 @@ import '../screens/login/sign_in_screen.dart';
 import '../screens/login/sign_up_screen.dart';
 import '../screens/onboarding/onboarding_screen.dart';
 import '../screens/splash/splash_screen.dart';
+import '../screens/main/main_screen.dart';
 import 'app_routes.dart';
 
 class AppPages {
@@ -38,7 +39,7 @@ class AppPages {
 
       case AppRoutes.home:
         return MaterialPageRoute(
-          builder: (_) => const HomeScreen(),
+          builder: (_) => const MainScreen(),
         );
 
       default:

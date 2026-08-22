@@ -6,7 +6,7 @@ import '../onboarding/onboarding_screen.dart';
 import '../../shared/constants/app_fonts.dart';
 import '../login/login_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../home/home_screen.dart';
+import '../main/main_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -68,7 +68,7 @@ class _SplashScreenState extends State<SplashScreen>
     if (!onboardingCompleted) {
       nextScreen = const OnboardingScreen();
     } else if (user != null) {
-      nextScreen = const HomeScreen();
+      nextScreen = const MainScreen();
     } else {
       nextScreen = const LoginScreen();
     }

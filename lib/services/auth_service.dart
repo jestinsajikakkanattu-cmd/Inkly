@@ -22,59 +22,29 @@ class AuthService {
   // ---------------------------------------------------------
 
   Future<UserCredential?> signInWithGoogle() async {
-    try {
-      final GoogleSignInAccount? googleUser =
-          await _googleSignIn.signIn();
+  try {
+    await _googleSignIn.signOut();
 
-      if (googleUser == null) {
-        return null;
-      }
+    final GoogleSignInAccount? googleUser =
+        await _googleSignIn.signIn();
 
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
+    if (googleUser == null) return null;
 
-      final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
+    final GoogleSignInAuthentication googleAuth =
+        await googleUser.authentication;
 
-      final userCredential =
-          await _auth.signInWithCredential(credential);
+    final credential = GoogleAuthProvider.credential(
+      accessToken: googleAuth.accessToken,
+      idToken: googleAuth.idToken,
+    );
 
-      final user = userCredential.user;
-
-      if (user == null) {
-        return userCredential;
-      }
-
-      final isNewUser =
-          userCredential.additionalUserInfo?.isNewUser ?? false;
-
-      if (isNewUser) {
-        loginStatus = "New User";
-
-        print("🆕 New Google User");
-      } else {
-        loginStatus = "Existing User";
-
-        print("👋 Existing Google User");
-      }
-
-      await _saveUser(user);
-
-      return userCredential;
-    } on FirebaseAuthException catch (e) {
-      await _googleSignIn.signOut();
-
-      throw Exception(_getAuthErrorMessage(e));
-    } catch (e) {
-      await _googleSignIn.signOut();
-
-      throw Exception(
-        e.toString().replaceFirst("Exception: ", ""),
-      );
-    }
+    return await _auth.signInWithCredential(credential);
+  } on FirebaseAuthException catch (e) {
+    throw Exception(e.message);
+  } catch (e) {
+    throw Exception(e.toString());
   }
+}
 
   // ---------------------------------------------------------
   // EMAIL SIGN IN

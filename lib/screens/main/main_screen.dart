@@ -1,7 +1,11 @@
+import 'dart:io';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../../services/profile_image_service.dart';
 import '../home/home_screen.dart';
+import '../profile/profile_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -13,24 +17,113 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
 
+  File? _profileImage;
+
+  String? _loadedUserId;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _loadProfileImage(
+      FirebaseAuth.instance.currentUser,
+    );
+  }
+
+  Future<void> _loadProfileImage(User? user) async {
+    if (user == null) {
+      if (!mounted) return;
+
+      setState(() {
+        _profileImage = null;
+        _loadedUserId = null;
+      });
+
+      return;
+    }
+
+    // Don't load the same user's image repeatedly
+    if (_loadedUserId == user.uid) {
+      return;
+    }
+
+    _loadedUserId = user.uid;
+
+    final path = await ProfileImageService.instance.getImagePath(
+      user.uid,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _profileImage = path != null ? File(path) : null;
+    });
+
+    print("✅ Loaded profile image for UID: ${user.uid}");
+    print("📁 Local image: $path");
+  }
+
   @override
   Widget build(BuildContext context) {
-    print(" ✅ main screen build");
-    final user = FirebaseAuth.instance.currentUser;
-    print(" ✅ USER: ${user?.email}");
-    print(" ✅ PHOTO URL: ${user?.photoURL}");
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.userChanges(),
+      builder: (context, snapshot) {
+        final user =
+            snapshot.data ?? FirebaseAuth.instance.currentUser;
 
-    final pages = [
-      const HomeScreen(),
-      const Center(child: Text("Calendar")),
-      const Center(child: Text("Reminders")),
-      const Center(child: Text("Profile")),
-    ];
+        // Detect account change
+        if (user?.uid != _loadedUserId) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              _loadProfileImage(user);
+            }
+          });
+        }
 
-    return Scaffold(
-      body: pages[_selectedIndex],
-      bottomNavigationBar: _buildBottomBar(user),
+        final pages = [
+          const HomeScreen(),
+
+          const Center(
+            child: Text("Calendar"),
+          ),
+
+          const Center(
+            child: Text("Reminders"),
+          ),
+
+          ProfileScreen(
+            onProfileImageChanged: () {
+              _refreshProfileImage(user);
+            },
+          ),
+        ];
+
+        return Scaffold(
+          body: pages[_selectedIndex],
+          bottomNavigationBar: _buildBottomBar(user),
+        );
+      },
     );
+  }
+
+  Future<void> _refreshProfileImage(User? user) async {
+    if (user == null) return;
+
+    final path =
+        await ProfileImageService.instance.getImagePath(
+      user.uid,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _profileImage = path != null ? File(path) : null;
+      _loadedUserId = user.uid;
+    });
+
+    print("🔄 Profile tab image updated");
+    print("👤 UID: ${user.uid}");
+    print("📁 Image: $path");
   }
 
   Widget _buildBottomBar(User? user) {
@@ -38,12 +131,20 @@ class _MainScreenState extends State<MainScreen> {
       height: 82,
       decoration: const BoxDecoration(
         color: Color(0xFFFFFCF8),
-        border: Border(top: BorderSide(color: Color(0xFFECE3D9))),
+        border: Border(
+          top: BorderSide(
+            color: Color(0xFFECE3D9),
+          ),
+        ),
       ),
       child: Row(
         children: [
           Expanded(
-            child: _navItem(icon: Icons.home_rounded, title: "Home", index: 0),
+            child: _navItem(
+              icon: Icons.home_rounded,
+              title: "Home",
+              index: 0,
+            ),
           ),
 
           Expanded(
@@ -59,8 +160,7 @@ class _MainScreenState extends State<MainScreen> {
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: () {
-                  print(" ✅ New Diary tapped");
-                  // New Diary later
+                  print("✅ New Diary tapped");
                 },
                 child: Container(
                   width: 62,
@@ -69,7 +169,11 @@ class _MainScreenState extends State<MainScreen> {
                     color: Color(0xFF6B4528),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.add, color: Colors.white, size: 38),
+                  child: const Icon(
+                    Icons.add,
+                    color: Colors.white,
+                    size: 38,
+                  ),
                 ),
               ),
             ),
@@ -83,7 +187,11 @@ class _MainScreenState extends State<MainScreen> {
             ),
           ),
 
-          Expanded(child: _profileItem(user)),
+          Expanded(
+            child: _profileItem(
+              user,
+            ),
+          ),
         ],
       ),
     );
@@ -100,9 +208,10 @@ class _MainScreenState extends State<MainScreen> {
       behavior: HitTestBehavior.opaque,
       onTap: () {
         setState(() {
-          print("✅ $title tab tapped");
           _selectedIndex = index;
         });
+
+        print("✅ $title tab tapped");
       },
       child: SizedBox(
         height: 82,
@@ -116,7 +225,9 @@ class _MainScreenState extends State<MainScreen> {
                   ? const Color(0xFF6B4528)
                   : const Color(0xFF655B54),
             ),
+
             const SizedBox(height: 4),
+
             Text(
               title,
               style: TextStyle(
@@ -140,7 +251,8 @@ class _MainScreenState extends State<MainScreen> {
         setState(() {
           _selectedIndex = 3;
         });
-        print(" ✅ Profile tapped");
+
+        print("✅ Profile tapped");
       },
       child: SizedBox(
         height: 82,
@@ -148,17 +260,24 @@ class _MainScreenState extends State<MainScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             ClipOval(
-              child: photoURL != null && photoURL.isNotEmpty
-                  ? Image.network(
-                      photoURL,
+              child: _profileImage != null
+                  ? Image.file(
+                      _profileImage!,
                       width: 32,
                       height: 32,
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return _defaultProfile();
-                      },
                     )
-                  : _defaultProfile(),
+                  : photoURL != null && photoURL.isNotEmpty
+                      ? Image.network(
+                          photoURL,
+                          width: 32,
+                          height: 32,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) {
+                            return _defaultProfile();
+                          },
+                        )
+                      : _defaultProfile(),
             ),
 
             const SizedBox(height: 4),
@@ -189,21 +308,11 @@ class _MainScreenState extends State<MainScreen> {
         shape: BoxShape.circle,
         color: Color(0xFFE7D8C6),
       ),
-      child: const Icon(Icons.person, size: 20, color: Color(0xFF6B4528)),
-    );
-  }
-
-  Widget _profileImage(User? user) {
-    final photoURL = user?.photoURL;
-
-    if (photoURL != null && photoURL.isNotEmpty) {
-      return CircleAvatar(radius: 16, backgroundImage: NetworkImage(photoURL));
-    }
-
-    return const CircleAvatar(
-      radius: 16,
-      backgroundColor: Color(0xFFE7D8C6),
-      child: Icon(Icons.person, size: 20, color: Color(0xFF6B4528)),
+      child: const Icon(
+        Icons.person,
+        size: 20,
+        color: Color(0xFF6B4528),
+      ),
     );
   }
 }

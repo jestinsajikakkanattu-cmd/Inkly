@@ -19,11 +19,17 @@ dependencies:
   shared_preferences: ^2.5.3 
 
   cupertino_icons: ^1.0.8
+  firebase_core: ^4.13.0
+  firebase_auth: ^6.5.7
+  google_sign_in: ^6.3.0
+  cloud_firestore: ^6.8.0
+  image_picker: ^1.1.2
+  path_provider: ^2.1.5
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-
+  flutter_launcher_icons: ^0.14.3
   
   flutter_lints: ^6.0.0
 
@@ -41,3 +47,25 @@ flutter:
         - asset: assets/fonts/Caveat-Bold.ttf
         - asset: assets/fonts/Caveat-SemiBold.ttf
         - asset: assets/fonts/Caveat-Medium.ttf
+        - asset: assets/fonts/Poppins-Thin.ttf
+        - asset: assets/fonts/Poppins-ExtraLight.ttf
+        - asset: assets/fonts/Poppins-Light.ttf
+        - asset: assets/fonts/Poppins-Regular.ttf
+        - asset: assets/fonts/Poppins-Medium.ttf
+        - asset: assets/fonts/Poppins-SemiBold.ttf
+        - asset: assets/fonts/Poppins-Bold.ttf
+        - asset: assets/fonts/Poppins-ExtraBold.ttf
+        - asset: assets/fonts/Poppins-Black.ttf
+        
+flutter_launcher_icons:
+  android: true
+  ios: true
+
+  image_path: "assets/images/app_icon.png"
+
+  min_sdk_android: 21
+
+  adaptive_icon_background: "#F8F2E8"
+  adaptive_icon_foreground: "assets/images/app_icon.png"
+
+  remove_alpha_ios: true

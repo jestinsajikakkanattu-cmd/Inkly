@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../onboarding/onboarding_screen.dart';
 import '../../shared/constants/app_fonts.dart';
+import '../login/login_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../main/main_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -50,19 +53,30 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _navigate() async {
-    await Future.delayed(const Duration(seconds: 2));
+    await Future.delayed(const Duration(seconds: 3));
 
     final prefs = await SharedPreferences.getInstance();
 
-    final completed = prefs.getBool('onboarding_completed') ?? false;
+    final onboardingCompleted = prefs.getBool('onboarding_completed') ?? false;
+
+    final user = FirebaseAuth.instance.currentUser;
 
     if (!mounted) return;
+
+    Widget nextScreen;
+
+    if (!onboardingCompleted) {
+      nextScreen = const OnboardingScreen();
+    } else if (user != null) {
+      nextScreen = const MainScreen();
+    } else {
+      nextScreen = const LoginScreen();
+    }
 
     Navigator.pushReplacement(
       context,
       PageRouteBuilder(
-        pageBuilder: (_, animation, secondaryAnimation) =>
-            const OnboardingScreen(),
+        pageBuilder: (_, animation, secondaryAnimation) => nextScreen,
         transitionDuration: const Duration(milliseconds: 800),
         transitionsBuilder: (_, animation, __, child) {
           return FadeTransition(opacity: animation, child: child);
@@ -70,10 +84,11 @@ class _SplashScreenState extends State<SplashScreen>
       ),
     );
   }
-// 300ms → Fast
-// 600ms → Normal
-// 800ms → Slow
-// 1200ms → Very slow
+
+  // 300ms → Fast
+  // 600ms → Normal
+  // 800ms → Slow
+  // 1200ms → Very slow
   @override
   void dispose() {
     _controller.dispose();
@@ -114,7 +129,7 @@ class _SplashScreenState extends State<SplashScreen>
                           "A diary that listens.",
                           style: TextStyle(
                             fontSize: 20,
-                            fontFamily: AppFonts.handwriting,
+                            fontFamily: AppFonts.handwriting1,
                             fontWeight: FontWeight.w500,
                             color: Color(0xFF3B2D24),
                           ),

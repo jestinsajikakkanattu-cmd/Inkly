@@ -27,25 +27,29 @@ class _SignInScreenState extends State<SignInScreen> {
 
   Future<void> _showForgotPasswordDialog() async {
     final formKey = GlobalKey<FormState>();
-    final emailController = TextEditingController();
 
     bool isValid = false;
     bool isSending = false;
 
-    await showDialog(
+    final resetSent = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (dialogContext, setDialogState) {
             return AlertDialog(
-              backgroundColor: const Color(0xFFFFFCF7),
+              backgroundColor: const Color(0xFFFFFBF7),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(20),
               ),
               title: const Text(
                 "Forgot Password?",
                 textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF211A16),
+                ),
               ),
               content: Form(
                 key: formKey,
@@ -56,12 +60,13 @@ class _SignInScreenState extends State<SignInScreen> {
                       "Enter your email address.\n"
                       "We'll send a reset link.",
                       textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 16, color: Color(0xFF655B54)),
                     ),
 
                     const SizedBox(height: 20),
 
                     TextFormField(
-                      controller: emailController,
+                      controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
                       autovalidateMode: AutovalidateMode.onUserInteraction,
                       onChanged: (value) {
@@ -73,7 +78,11 @@ class _SignInScreenState extends State<SignInScreen> {
                       },
                       decoration: InputDecoration(
                         hintText: "Email Address",
-                        prefixIcon: const Icon(Icons.email_outlined),
+                        hintStyle: const TextStyle(color: Color(0xFF9A9692)),
+                        prefixIcon: const Icon(
+                          Icons.email_outlined,
+                          color: Color(0xFF655B54),
+                        ),
                         filled: true,
                         fillColor: Colors.white,
                         border: OutlineInputBorder(
@@ -98,22 +107,39 @@ class _SignInScreenState extends State<SignInScreen> {
                   ],
                 ),
               ),
+              actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
               actions: [
                 Row(
                   children: [
+                    // CANCEL
                     Expanded(
                       child: OutlinedButton(
                         onPressed: isSending
                             ? null
                             : () {
-                                Navigator.pop(dialogContext);
+                                Navigator.of(dialogContext).pop(false);
                               },
-                        child: const Text("Cancel"),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF655B54),
+                          side: const BorderSide(color: Color(0xFFE7DED5)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                        ),
+                        child: const Text(
+                          "Cancel",
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                     ),
 
                     const SizedBox(width: 12),
 
+                    // SEND
                     Expanded(
                       child: ElevatedButton(
                         onPressed: !isValid || isSending
@@ -123,32 +149,36 @@ class _SignInScreenState extends State<SignInScreen> {
                                   return;
                                 }
 
+                                FocusScope.of(dialogContext).unfocus();
+
                                 setDialogState(() {
                                   isSending = true;
                                 });
 
                                 try {
                                   await AuthService.instance.sendPasswordReset(
-                                    email: emailController.text.trim(),
+                                    email: _emailController.text.trim(),
                                   );
 
                                   if (!dialogContext.mounted) {
                                     return;
                                   }
 
-                                  Navigator.pop(dialogContext);
+                                  print("✅ Password reset email sent");
 
-                                  if (!mounted) return;
-
-                                  _showResetSuccessDialog();
+                                  Navigator.of(dialogContext).pop(true);
                                 } catch (e) {
+                                  print("❌ Password reset error: $e");
+
+                                  if (!dialogContext.mounted) {
+                                    return;
+                                  }
+
                                   setDialogState(() {
                                     isSending = false;
                                   });
 
-                                  ScaffoldMessenger.of(
-                                    dialogContext,
-                                  ).showSnackBar(
+                                  ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text(
                                         e.toString().replaceFirst(
@@ -161,6 +191,17 @@ class _SignInScreenState extends State<SignInScreen> {
                                   );
                                 }
                               },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF6B4528),
+                          foregroundColor: Colors.white,
+                          disabledBackgroundColor: const Color(0xFFD8CFC7),
+                          disabledForegroundColor: const Color(0xFF8B837D),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                        ),
                         child: isSending
                             ? const SizedBox(
                                 width: 20,
@@ -170,7 +211,13 @@ class _SignInScreenState extends State<SignInScreen> {
                                   color: Colors.white,
                                 ),
                               )
-                            : const Text("Send"),
+                            : const Text(
+                                "Send",
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                       ),
                     ),
                   ],
@@ -182,25 +229,43 @@ class _SignInScreenState extends State<SignInScreen> {
       },
     );
 
-    emailController.dispose();
+    // Do NOT dispose _emailController here.
+    // It belongs to SignInScreen.
+
+    if (resetSent == true && mounted) {
+      _showResetSuccessDialog();
+    }
   }
+
+  // ---------------------------------------------------------
+  // RESET SUCCESS
+  // ---------------------------------------------------------
 
   void _showResetSuccessDialog() {
     showDialog(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          backgroundColor: const Color(0xFFFFFCF7),
+          backgroundColor: const Color(0xFFFFFBF7),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(20),
           ),
-          title: const Icon(Icons.check_circle, size: 60, color: Colors.green),
+          title: const Icon(
+            Icons.check_circle_rounded,
+            size: 60,
+            color: Color(0xFF6B4528),
+          ),
           content: const Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 "Reset Link Sent",
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF211A16),
+                ),
               ),
 
               SizedBox(height: 10),
@@ -209,16 +274,31 @@ class _SignInScreenState extends State<SignInScreen> {
                 "If your email exists,\n"
                 "you'll receive a password reset link shortly.",
                 textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 16, color: Color(0xFF655B54)),
               ),
             ],
           ),
+          actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
           actions: [
-            Center(
+            SizedBox(
+              width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
-                  Navigator.pop(dialogContext);
+                  Navigator.of(dialogContext).pop();
                 },
-                child: const Text("OK"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF6B4528),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                ),
+                child: const Text(
+                  "OK",
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                ),
               ),
             ),
           ],
@@ -344,7 +424,7 @@ class _SignInScreenState extends State<SignInScreen> {
           Image.asset("assets/images/bg_image.png", fit: BoxFit.cover),
 
           SafeArea(
-            child: Padding(
+            child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 30),
               child: Form(
                 key: _formKey,

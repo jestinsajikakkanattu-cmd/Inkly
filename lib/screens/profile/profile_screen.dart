@@ -168,7 +168,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   _profileOption(
                     icon: Icons.settings_outlined,
                     title: "Settings",
-                    highlighted: true,
+                    highlighted: false,
                     onTap: () {
                       print("✅ Settings tapped");
 
@@ -188,6 +188,57 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     icon: Icons.logout_rounded,
                     title: "Sign Out",
                     onTap: () async {
+                      print("✅ Sign Out tapped");
+
+                      final confirmed = await showDialog<bool>(
+                        context: context,
+                        builder: (context) {
+                          return AlertDialog(
+                            backgroundColor: const Color(0xFFFFFBF7),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            title: const Text(
+                              "Sign Out?",
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF211A16),
+                              ),
+                            ),
+                            content: const Text(
+                              "Are you sure you want to sign out?",
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Color(0xFF655B54),
+                              ),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.pop(context, false);
+                                },
+                                child: const Text(
+                                  "Cancel",
+                                  style: TextStyle(color: Color(0xFF655B54)),
+                                ),
+                              ),
+                              ElevatedButton(
+                                onPressed: () {
+                                  Navigator.pop(context, true);
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF6B4528),
+                                  foregroundColor: Colors.white,
+                                ),
+                                child: const Text("Yes, Sign Out"),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+
+                      if (confirmed != true) return;
+
                       try {
                         await GoogleSignIn().signOut();
                         await FirebaseAuth.instance.signOut();
@@ -199,6 +250,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           "/login",
                           (route) => false,
                         );
+
+                        print("✅ User signed out successfully");
                       } catch (e) {
                         print("❌ Sign out error: $e");
                       }

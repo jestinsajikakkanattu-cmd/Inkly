@@ -4,7 +4,6 @@ import '../../shared/constants/app_fonts.dart';
 import 'sign_up_screen.dart';
 import '../../services/auth_service.dart';
 import '../../routes/app_routes.dart';
-import '../main/main_screen.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});

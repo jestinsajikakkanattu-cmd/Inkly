@@ -25,6 +25,7 @@ dependencies:
   cloud_firestore: ^6.8.0
   image_picker: ^1.1.2
   path_provider: ^2.1.5
+  uuid: ^4.5.1
 
 dev_dependencies:
   flutter_test:
@@ -39,6 +40,8 @@ flutter:
   assets:
     - assets/images/
     - assets/login_images/
+    - assets/images/pen.png
+    - assets/home_images/
 
   fonts:
     - family: Caveat
